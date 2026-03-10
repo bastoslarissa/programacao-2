@@ -1,42 +1,77 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+/* Exercício 1: Ler uma string da entrada padrão e escrevê-la na saída padrão ao contrário 
+  (do final para o início), de forma similar ao comando rev do shell UNIX.*/
 
 void le_string (char *string) {
 
+    printf("Digite uma string: ");
     scanf("%[^\n]", string);
 
 }
 
-void imprime_string (char *string) {
+void imprime_string_reversa (char *string) {
 
     int i = 0 ;
     int string_tam = strlen(string);
 
-    char *string_reversa = NULL;
+    char *string_reversa = malloc(sizeof(char) * string_tam);
 
     while (string[i] != '\0') {
 
-        string_reversa[string_tam] = string[i];
+        string_reversa[string_tam - 1] = string[i];
 
         i++;
         string_tam--;
     }
+
+    printf("string ao contrário: %s\n", string_reversa);
+
+    free(string_reversa);
 }
 
-/* void imprime_ao_contrario (char *string) {
+/* Exercício 2: Calcular o tamanho de uma string sem usar strlen */
+
+int calcula_tamanho (char *string) {
+
+    int i = 0;
+    int contador = 0;
+
+    while (string[i] != 0) {
+
+        contador++;
+        i++;
+    }
+
+    return contador;
+}
+
+/* Exercício 3: Converter as letras de uma string em minúsculas 
+  (dica: estude a estrutura da tabela ASCII antes de implementar)*/
+
+/* void converte_em_minusculo (char *string) {
 
     int string_tam = strlen(string);
 
-    char string_reversa[string_tam];
+    char *string_aux = malloc(sizeof(char) * string_tam);
+    strcpy(string_aux, string);
 
-    for (int i =  string_tam; i > 0; i++) {
+    for (int i = 0; i < string_tam; i++) {
 
-        for (int j = 0; j < string_tam; j++) {
+        if (string[i] >= 'A' && string[i] <= 'Z') {
 
-            string_reversa[j] = string[i];
+            string_aux[i] -= 32;
         }
     }
 
-    printf("string ao contrário: %s", string_reversa);
-
+    printf("String convertida em letras minúsculas: %s\n", string_aux);
 } */
+
+/* Exercício 4: Ler linhas da entrada padrão e escrevê-las na saída padrão em ordem alfabética 
+   crescente, de forma similar ao comando sort do shell UNIX.*/
+
+void imprime_em_ordem (char *string) {
+    
+}
