@@ -7,12 +7,14 @@ int main () {
 
     le_string(string);
 
-    string_tamanho = calcula_tamanho(string);
+    string_tamanho = tamanho(string);
     printf("Tamano da string: %d\n", string_tamanho);
 
     imprime_string_reversa(string);
 
 /*     converte_em_minusculo(string); */
+
+    imprime_ordenado(string);
 
 }
 

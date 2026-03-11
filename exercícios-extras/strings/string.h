@@ -34,7 +34,7 @@ void imprime_string_reversa (char *string) {
 
 /* Exercício 2: Calcular o tamanho de uma string sem usar strlen */
 
-int calcula_tamanho (char *string) {
+int tamanho (char *string) {
 
     int i = 0;
     int contador = 0;
@@ -72,6 +72,37 @@ int calcula_tamanho (char *string) {
 /* Exercício 4: Ler linhas da entrada padrão e escrevê-las na saída padrão em ordem alfabética 
    crescente, de forma similar ao comando sort do shell UNIX.*/
 
-void imprime_em_ordem (char *string) {
+void ordena (char *string) {
     
+    int i = 0;
+    char *menor = '\0';
+
+    while(string[i] != '/0') {
+
+        for (int i = 0; i < (tamanho(string) - 1); i++) {
+
+            menor = string[i];
+            int j = i - 1;
+
+            while (j >= 0 && string[j] > menor) {
+
+                string[j + 1] = string[j];
+                j = j - 1;
+            }
+        string[j + 1] = menor;
+        }
+    }
+}
+
+void imprime_ordenado (char *string) {
+
+    ordena(string);
+
+    for (int i = 0; i < tamanho(string); i++) {
+
+        printf("%s ", string[i]);
+    }
+
+    printf("\n");
+
 }
