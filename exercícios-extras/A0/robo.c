@@ -1,16 +1,18 @@
+#include <stdio.h>
 #include "lista.h"
 
 int main () {
 
     struct fila_t *lista = lista_cria ();
 
-    int a = 2;
-    int b = 4;
-    int *pa = &a;
-    int *pb = &b;
+    lista_insere(lista, 4);
+    lista_insere(lista, 2);
 
-    lista_insere(lista, pa);
-    lista_insere(lista, pb);
+    lista_retira(lista, 4);
+
+    lista_insere(lista, 3);
+
+    lista_imprime(lista);
 
     lista_destroi(lista);
 }
