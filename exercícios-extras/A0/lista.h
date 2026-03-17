@@ -9,7 +9,7 @@
 // Definição das estruturas
 struct nodo_t {
 
-    int item;
+    void *item;
     struct nodo_t *prox;
 
 };

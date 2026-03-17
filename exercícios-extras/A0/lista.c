@@ -32,7 +32,7 @@ struct fila_t *lista_destroi (struct fila_t *lista) {
     return NULL;
 }
 
-int lista_insere (struct fila_t *lista, int item) {
+int lista_insere (struct fila_t *lista, void *item) {
 
     // cria um novo nodo
     struct nodo_t *novo_nodo = malloc(sizeof(struct nodo_t));
@@ -67,7 +67,7 @@ int lista_insere (struct fila_t *lista, int item) {
 
 }
 
-int *lista_retira (struct fila_t *lista, int item) {
+int *lista_retira (struct fila_t *lista, void *item) {
 
     // verificação
     if (!lista || !item)
@@ -93,7 +93,7 @@ int *lista_retira (struct fila_t *lista, int item) {
     return item_retirado;
 }
 
-void lista_imprime (struct fila_t *lista) {
+/* void lista_imprime (struct fila_t *lista) {
 
     struct nodo_t *aux = lista -> primeiro;
 
@@ -104,4 +104,4 @@ void lista_imprime (struct fila_t *lista) {
     }
 
     printf("\n");
-}
+} */
