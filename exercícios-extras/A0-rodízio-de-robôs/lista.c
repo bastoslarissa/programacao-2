@@ -67,7 +67,7 @@ int lista_insere (struct fila_t *lista, void *item) {
 
 }
 
-int *lista_retira (struct fila_t *lista, void *item) {
+struct nodo_t *lista_retira (struct fila_t *lista, void *item) {
 
     // verificação
     if (!lista || !item)
@@ -75,14 +75,14 @@ int *lista_retira (struct fila_t *lista, void *item) {
     
     struct nodo_t *aux = lista -> primeiro;
     struct nodo_t *aux_anterior = lista -> ultimo;
-    int *item_retirado;
+    struct nodo_t *item_retirado;
 
     // retira o item
     for (int i = 0; i < lista -> num; i++) {
 
         if (aux -> item == item) {
 
-            item_retirado = &aux -> item;
+            item_retirado = aux;
             aux_anterior -> prox = aux -> prox;
         }
     }
