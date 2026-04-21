@@ -72,6 +72,7 @@ int tamanho (char *string) {
 /* Exercício 4: Ler linhas da entrada padrão e escrevê-las na saída padrão em ordem alfabética 
    crescente, de forma similar ao comando sort do shell UNIX.*/
 
+// Ordena a string usando o algoritmo Selection Sort (talvez mudar p\ quick sort(?))
 void ordena (char *string) {
     
     int i = 0;
