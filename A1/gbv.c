@@ -256,20 +256,10 @@ int gbv_list(const Library *lib) {
 
 int gbv_view(const Library *lib, const char *docname) {
 
-    // acesso a memória e verificacao
-    FILE* doc;
-
-    doc = fopen (docname, "rb");
-
-    if(!doc) {
-
-        perror("Erro ao abrir arquivo para visualizar em view");
-        return -1;
-    }
-
     // encontra o documento dentro da biblioteca
     long doc_offset = -1;
     long doc_size = -1;
+    int indice;
 
     for (int i = 0; i < lib->count; i++) {
 
@@ -277,11 +267,23 @@ int gbv_view(const Library *lib, const char *docname) {
             
             doc_offset = lib->docs[i].offset;
             doc_size = lib->docs[i].size;
+            indice = i;
         }
     }
 
     if (doc_offset == -1 || doc_size == -1)
         return -1;
+
+       // acesso a memória e verificacao
+    FILE* doc;
+
+    doc = fopen (lib->docs[indice].name, "rb");
+
+    if(!doc) {
+
+        perror("Erro ao abrir arquivo para visualizar em view");
+        return -1;
+    }
 
     long inicio = doc_offset;
     long posicao_atual = doc_offset;
