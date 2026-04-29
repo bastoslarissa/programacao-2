@@ -14,7 +14,7 @@ typedef struct {
     long offset;           // posição no container
 } Document;
 
-// Estrutura que representa a biblioteca (diretório em memória)
+//  Estrutura que representa a biblioteca (diretório em memória)
 typedef struct {
     Document *docs;        // vetor dinâmico de documentos
     int count;             // número de documentos
