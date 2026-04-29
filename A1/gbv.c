@@ -19,7 +19,7 @@ int gbv_create(const char *filename) {
 
     // verificacao
     if (!arq) {
-        perror ("Erro ao criar arquivo em create");
+        printf("Erro ao criar arquivo em create\n");
         return -1;
     }
 
@@ -48,14 +48,23 @@ int gbv_open(Library *lib, const char *filename) {
 
     //verificacao
     if (!arq) {
-        return -1;
+        gbv_create(filename);
+        arq = fopen(filename, "rb+");
+
+        if (!arq) {
+            printf("Erro ao abrir arquivo em open\n");
+            return -1;
+        }
     }
 
     // le o superbloco
     struct superbloco sb;
 
     if (fread(&sb, sizeof(struct superbloco), 1, arq) != 1) {
-        perror ("Erro ao ler arquivo");
+        printf("Erro ao ler arquivo em open\n");
+        printf("open: docs_num = %d\n", sb.docs_num);
+        printf("open: offset_dir = %ld\n", sb.offset_dir);
+        printf("open: sizeof(Document) = %zu\n", sizeof(Document));
         fclose(arq);
         return -1;
     }
@@ -64,12 +73,12 @@ int gbv_open(Library *lib, const char *filename) {
     lib->count = sb.docs_num;
     
     // se o numero de documentos for diferente de 0
-    if (lib->count != 0) {
+    if (lib->count > 0) {
         lib->docs = malloc(sizeof(Document) * lib->count);  
 
         // se a memoria alocada para documentos for invalida
         if (!lib->docs) {
-            perror ("Erro ao criar documento para arquivo");
+            printf("Erro ao criar documento para arquivo em open");
             fclose(arq);
             return -1;
         }
@@ -77,18 +86,20 @@ int gbv_open(Library *lib, const char *filename) {
         fseek(arq, sb.offset_dir, SEEK_SET);
 
         // verifica se a leitura da biblioteca ocorreu sem erros
-        if (fread(&sb, sizeof(struct superbloco), lib->count, arq)) {
+        size_t lidos = (fread(lib->docs, sizeof(struct superbloco), lib->count, arq));
 
+        if (lidos != sizeof(lib->count)) {
             free(lib->docs);
-            perror ("Erro ao ler documentos do arquivo");
+            printf("Erro ao ler documentos do arquivo em open");
             fclose(arq);
             return -1;
         }
     }
+
     else {
 
         lib->docs = NULL;
-    }
+    } 
 
     rewind(arq);
     fclose(arq);
@@ -120,7 +131,7 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
 
      // verificacao
     if (!doc) {
-        perror ("Erro ao abrir documento");
+        perror ("Erro ao abrir documento em add");
         return -1;
     }
    
@@ -132,7 +143,7 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
     biblioteca = fopen(archive, "rb+");
 
     if (!biblioteca) {
-        perror ("Erro ao abrir biblioteca");
+        perror ("Erro ao abrir biblioteca em add");
         return -1;
     }
 
@@ -246,19 +257,19 @@ int gbv_list(const Library *lib) {
 int gbv_view(const Library *lib, const char *docname) {
 
     // acesso a memória e verificacao
-    FILE* biblioteca;
+    FILE* doc;
 
-    biblioteca = fopen (lib, "rb");
+    doc = fopen (docname, "rb");
 
-    if(!biblioteca) {
+    if(!doc) {
 
-        perror("Erro ao abrir arquivo para visualizar");
+        perror("Erro ao abrir arquivo para visualizar em view");
         return -1;
     }
 
     // encontra o documento dentro da biblioteca
-    long doc_offset;
-    long doc_size;
+    long doc_offset = -1;
+    long doc_size = -1;
 
     for (int i = 0; i < lib->count; i++) {
 
@@ -269,27 +280,86 @@ int gbv_view(const Library *lib, const char *docname) {
         }
     }
 
+    if (doc_offset == -1 || doc_size == -1)
+        return -1;
+
+    long inicio = doc_offset;
     long posicao_atual = doc_offset;
+    long fim = doc_offset + doc_size;
 
     // impressao
-    char buffer1[BUFFER_SIZE];
-    char buffer2[BUFFER_SIZE];
-    size_t lidos;
-    char opcao = '\0';
+    char buffer[BUFFER_SIZE];
+    char opcao;
 
-    fseek(biblioteca, doc_offset, SEEK_SET);
-    fread(buffer1, 1, BUFFER_SIZE, biblioteca);
-    fwrite(buffer1, 1, BUFFER_SIZE, stdout);
+    // imprime a primeira vez
+    fseek(doc, doc_offset, SEEK_SET);
 
-    while (posicao_atual < (doc_offset + doc_size)) {
+    // caso em que o doc é maior do que buffer_size
+    if (doc_size > BUFFER_SIZE) {
+        fread(buffer, 1, BUFFER_SIZE, doc);
+        fwrite(buffer, 1, BUFFER_SIZE, stdout);
+        posicao_atual += BUFFER_SIZE;
+    }
 
-        scanf("%d", &opcao);
+    // caso em que o doc é menor do que o buffer_size
+    else {
+        fread(buffer, 1, doc_size, doc);
+        fwrite(buffer, 1, doc_size, stdout);
+        posicao_atual = fim;    
+    }
 
-        if (strcmp(opcao, 'n') == 0)
+   // loop de impressao 
+    while (posicao_atual < fim) {
+
+        scanf("%c", &opcao);
+
+        // usuario digitou 'n'
+        if (opcao == 'n') {
+
+            if(posicao_atual < fim && (posicao_atual + BUFFER_SIZE) < fim) {
+                fread(buffer, 1, BUFFER_SIZE, doc);
+                fwrite(buffer, 1, BUFFER_SIZE, stdout);
+                posicao_atual += BUFFER_SIZE;
+            }
+            else if (posicao_atual < fim && (posicao_atual + BUFFER_SIZE) > fim) {
+                fread(buffer, 1, (fim - posicao_atual), doc);
+                fwrite(buffer, 1, (fim - posicao_atual), stdout);
+                posicao_atual = fim;
+            }
+        }
             
-        
-        else if (strcmp(opcao, 'p') == 0)
+        // usuario digitou 'p'
+        else if (opcao == 'p') {
+
+            if ((posicao_atual - (BUFFER_SIZE * 2)) > inicio) {
+                posicao_atual -= BUFFER_SIZE * 2;
+                fseek(doc, posicao_atual, SEEK_SET);
+                fread(buffer, 1, BUFFER_SIZE, doc);
+                fwrite(buffer, 1, BUFFER_SIZE, stdout);
+            }
+            else if ((posicao_atual - (BUFFER_SIZE * 2)) < inicio) {
+
+                if (posicao_atual - BUFFER_SIZE > inicio) {
+                    posicao_atual -= BUFFER_SIZE;
+                    fseek(doc, posicao_atual, SEEK_SET);
+                    fread(buffer, 1, BUFFER_SIZE, doc);
+                    fwrite(buffer, 1, BUFFER_SIZE, stdout);
+                }
+                else if ((posicao_atual - BUFFER_SIZE) < inicio) {
+                    fseek(doc, inicio, SEEK_SET);
+                    fread(buffer, 1, (posicao_atual - inicio), doc);
+                    fwrite(buffer, 1, (posicao_atual - inicio), stdout);
+                    posicao_atual = inicio;
+                }
+            }
+        }
+
+        // usuario digitou 'q'
+        else if (opcao == 'q') {
+
+            return 0;
+        }
     }
         
-
+    return -1;
 }

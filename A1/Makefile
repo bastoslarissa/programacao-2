@@ -3,11 +3,11 @@ CFLAGS = -Wall -g
 
 all: gbv
 
-gbv: mainteste.o gbv.o util.o
-	$(CC) $(CFLAGS) -o gbv mainteste.o gbv.o util.o
+gbv: main.o gbv.o util.o
+	$(CC) $(CFLAGS) -o gbv main.o gbv.o util.o
 
-mainteste.o: mainteste.c gbv.h
-	$(CC) $(CFLAGS) -c mainteste.c
+main.o: main.c gbv.h
+	$(CC) $(CFLAGS) -c main.c
 
 gbv.o: gbv.c gbv.h
 	$(CC) $(CFLAGS) -c gbv.c
