@@ -19,7 +19,6 @@ int gbv_create(const char *filename) {
 
     // verificacao
     if (!arq) {
-        printf("Erro ao criar arquivo em create\n");
         return -1;
     }
 
@@ -52,7 +51,6 @@ int gbv_open(Library *lib, const char *filename) {
         arq = fopen(filename, "rb+");
 
         if (!arq) {
-            printf("Erro ao abrir arquivo em open\n");
             return -1;
         }
     }
@@ -74,7 +72,6 @@ int gbv_open(Library *lib, const char *filename) {
 
         // se a memoria alocada para documentos for invalida
         if (!lib->docs) {
-            printf("Erro ao criar documento para arquivo em open");
             fclose(arq);
             return -1;
         }
@@ -86,7 +83,6 @@ int gbv_open(Library *lib, const char *filename) {
 
         if (lidos != (size_t)(lib->count)) {
             free(lib->docs);
-            printf("Erro ao ler documentos do arquivo em open");
             fclose(arq);
             return -1;
         }
@@ -127,7 +123,6 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
 
      // verificacao
     if (!doc) {
-        perror ("Erro ao abrir documento em add");
         return -1;
     }
    
@@ -139,7 +134,6 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
     biblioteca = fopen(archive, "rb+");
 
     if (!biblioteca) {
-        perror ("Erro ao abrir biblioteca em add");
         return -1;
     }
 
@@ -161,13 +155,11 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
     }
 
     if (posicao != - 1) {
-
         lib->docs[posicao] = novo_documento(lib, posicao, docname, doc_tam, time(&lib->docs[posicao].date), offset_dir);
     }
 
     // se não há arquivo com nome igual, aloca memoria para um novo elemento no vetor de documentos
-    else {
-    
+    else {   
         lib->docs = realloc(lib->docs, (lib->count + 1) * sizeof(Document));
         lib->docs[lib->count] = novo_documento(lib, lib->count, docname, doc_tam, time(&lib->docs[lib->count].date), offset_dir);
         lib->count++;
@@ -218,7 +210,6 @@ int gbv_remove(Library *lib, const char *docname, const char* archive) {
     biblioteca =  fopen(archive, "rb+");
 
     if(!biblioteca) {
-        printf("Erro ao abrir biblioteca em remove\n");
         return -1;
     }
 
@@ -231,17 +222,13 @@ int gbv_remove(Library *lib, const char *docname, const char* archive) {
     // percorre o vetor de documentos procurando o arquivo a ser removido, se achar, remove, senão, retorna
     for (int i = 0; i < lib->count; i++) {
 
-        printf("lib count antes: %d\n", lib->count);
         if ((strcmp(lib->docs[i].name, docname)) == 0) {
-            printf("acho o documento: %s em %d\n", lib->docs[i].name, i);
 
             for (int j= i; j < lib->count - 1; j++) {
-
                 lib->docs[j] = lib->docs[j+1];
             }
 
             lib->count = lib->count - 1;
-            printf("lib count depois: %d\n", lib->count);
         }
     }
 
@@ -257,10 +244,8 @@ int gbv_remove(Library *lib, const char *docname, const char* archive) {
 
     // ajusta a memória caso ela tenha ficado vazia
     if (lib->count == 0) {
-
         free(lib->docs);
         lib->docs = NULL;
-
     }
 
     fclose(biblioteca);
@@ -272,7 +257,6 @@ int gbv_list(const Library *lib) {
     char data_str[64];
 
     for (int i = 0; i < lib->count; i++) {
-
         printf("Name: %s\n", lib->docs[i].name);
         printf("Size: %ld\n", lib->docs[i].size);
 
@@ -297,8 +281,6 @@ int gbv_view(const Library *lib, const char *docname, const char* archive) {
     biblioteca = fopen (archive, "rb");
 
     if(!biblioteca) {
-
-        perror("Erro ao abrir arquivo para visualizar em view");
         return -1;
     }
 
@@ -309,7 +291,6 @@ int gbv_view(const Library *lib, const char *docname, const char* archive) {
     for (int i = 0; i < lib->count; i++) {
 
         if (strcmp(docname, lib->docs[i].name) == 0) {
-            
             doc_offset = lib->docs[i].offset;
             doc_size = lib->docs[i].size;
         }
@@ -352,7 +333,6 @@ int gbv_view(const Library *lib, const char *docname, const char* archive) {
 
    // loop de impressao 
     while (1) {
-
         scanf(" %c", &opcao);
 
         // usuario digitou 'n'
