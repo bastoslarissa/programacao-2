@@ -1,5 +1,4 @@
 Autora: Larissa de Souza Bastos
-GRR: 20235088
 
 # Lista de arquivos: 
     (arquivos que usei para testes):
