@@ -59,12 +59,8 @@ int gbv_open(Library *lib, const char *filename) {
 
     // le o superbloco
     struct superbloco sb;
-
+    
     if (fread(&sb, sizeof(struct superbloco), 1, arq) != 1) {
-        printf("Erro ao ler arquivo em open\n");
-        printf("open: docs_num = %d\n", sb.docs_num);
-        printf("open: offset_dir = %ld\n", sb.offset_dir);
-        printf("open: sizeof(Document) = %zu\n", sizeof(Document));
         fclose(arq);
         return -1;
     }
@@ -86,9 +82,9 @@ int gbv_open(Library *lib, const char *filename) {
         fseek(arq, sb.offset_dir, SEEK_SET);
 
         // verifica se a leitura da biblioteca ocorreu sem erros
-        size_t lidos = (fread(lib->docs, sizeof(struct superbloco), lib->count, arq));
+        size_t lidos = (fread(lib->docs, sizeof(Document), lib->count, arq));
 
-        if (lidos != sizeof(lib->count)) {
+        if (lidos != (size_t)(lib->count)) {
             free(lib->docs);
             printf("Erro ao ler documentos do arquivo em open");
             fclose(arq);
@@ -151,29 +147,31 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
     struct superbloco sb;
     fseek(biblioteca, 0, SEEK_SET);
     fread(&sb, sizeof(struct superbloco), 1, biblioteca);
-
     long offset_dir = sb.offset_dir;
+
+    int posicao = -1;
 
     // percorre a biblioteca para verificar se há algum documento de mesmo nome
     for (int i = 0; i < lib->count; i++) {
 
         // se há um arquivo com nome igual
         if (strcmp(lib->docs[i].name, docname) == 0) {
-
-            // substitui os dados do documento antigo pelo novo
-            novo_documento(lib, i, docname, doc_tam, time(&lib->docs[i].date), offset_dir);
+            posicao = i;
         }
     }
 
-    // se não há arquivo com nome igual, aloca memoria para um novo elemento no vetor de documentos
-    lib->docs = realloc(lib->docs, (lib->count + 1) * sizeof(Document));
-    lib->docs[lib->count] = novo_documento(lib, lib->count, docname, doc_tam, time(&lib->docs[lib->count].date), offset_dir);
-    lib->count++; 
+    if (posicao != - 1) {
 
-    // reescreve a área de diretório no novo offset
-    long novo_offset_dir = ftell(biblioteca);
-    fseek(biblioteca, novo_offset_dir, SEEK_SET);
-    fwrite(lib->docs, sizeof(Document), lib->count, doc);
+        lib->docs[posicao] = novo_documento(lib, posicao, docname, doc_tam, time(&lib->docs[posicao].date), offset_dir);
+    }
+
+    // se não há arquivo com nome igual, aloca memoria para um novo elemento no vetor de documentos
+    else {
+    
+        lib->docs = realloc(lib->docs, (lib->count + 1) * sizeof(Document));
+        lib->docs[lib->count] = novo_documento(lib, lib->count, docname, doc_tam, time(&lib->docs[lib->count].date), offset_dir);
+        lib->count++;
+    } 
 
     // escreve o arquivo no final do documento
     char buffer[BUFFER_SIZE];
@@ -181,10 +179,16 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
 
     fseek(biblioteca, offset_dir, SEEK_SET);   // ponteiro apontando para o início 
 
-    // enquanto a quantidade de blocos lidos for maior do que 0, escreve os dados no buffer 
+    // enquanto a quantidade de blocos lidos for maior do que 0, escreve os dados do buffer 
     while ((lidos = fread(buffer, 1, BUFFER_SIZE, doc)) > 0) {
         fwrite(buffer, 1, lidos, biblioteca);
     }
+
+    // reescreve a área de diretório no novo offset
+    long novo_offset_dir = ftell(biblioteca);
+    fseek(biblioteca, novo_offset_dir, SEEK_SET);
+    fwrite(lib->docs, sizeof(Document), lib->count, biblioteca);
+
 
     // altera o superbloco
     sb.docs_num = lib->count;
@@ -196,30 +200,60 @@ int gbv_add(Library *lib, const char *archive, const char *docname) {
     // finaliza 
     rewind(doc);
     fclose(doc);
+    rewind(biblioteca);
+    fclose(biblioteca);
     return 0;
 }
 
 
-int gbv_remove(Library *lib, const char *docname) {
+int gbv_remove(Library *lib, const char *docname, const char* archive) {
 
     // verificacao
     if (!lib || lib->count == 0 || !docname)
         return -1;
 
+    // le a biblioteca
+    FILE* biblioteca;
+
+    biblioteca =  fopen(archive, "rb+");
+
+    if(!biblioteca) {
+        printf("Erro ao abrir biblioteca em remove\n");
+        return -1;
+    }
+
+    // le o superbloco
+    struct superbloco sb;
+
+    fseek(biblioteca, 0, SEEK_SET);
+    fwrite(&sb, sizeof(struct superbloco), 1, biblioteca);
+
     // percorre o vetor de documentos procurando o arquivo a ser removido, se achar, remove, senão, retorna
     for (int i = 0; i < lib->count; i++) {
 
+        printf("lib count antes: %d\n", lib->count);
         if ((strcmp(lib->docs[i].name, docname)) == 0) {
+            printf("acho o documento: %s em %d\n", lib->docs[i].name, i);
 
-            for (int j= i; j < (lib->count - 1); j++) {
+            for (int j= i; j < lib->count - 1; j++) {
 
                 lib->docs[j] = lib->docs[j+1];
             }
 
-            lib->count--;
-
+            lib->count = lib->count - 1;
+            printf("lib count depois: %d\n", lib->count);
         }
     }
+
+    // reescreve a área de diretório
+    fseek(biblioteca, sb.offset_dir, SEEK_SET);
+    fwrite(lib->docs, sizeof(Document), lib->count, biblioteca); 
+
+    // altera o superbloco
+    sb.docs_num = lib->count;
+
+    fseek(biblioteca, 0, SEEK_SET);
+    fwrite(&sb, sizeof(struct superbloco), 1, biblioteca);
 
     // ajusta a memória caso ela tenha ficado vazia
     if (lib->count == 0) {
@@ -229,6 +263,7 @@ int gbv_remove(Library *lib, const char *docname) {
 
     }
 
+    fclose(biblioteca);
     return 0;
 }
 
@@ -254,37 +289,39 @@ int gbv_list(const Library *lib) {
 
 }
 
-int gbv_view(const Library *lib, const char *docname) {
+int gbv_view(const Library *lib, const char *docname, const char* archive) {
 
-    // encontra o documento dentro da biblioteca
-    long doc_offset = -1;
-    long doc_size = -1;
-    int indice;
+    // acesso a memória e verificacao
+    FILE* biblioteca;
 
-    for (int i = 0; i < lib->count; i++) {
+    biblioteca = fopen (archive, "rb");
 
-        if (strcmp(docname, lib->docs[i].name)) {
-            
-            doc_offset = lib->docs[i].offset;
-            doc_size = lib->docs[i].size;
-            indice = i;
-        }
-    }
-
-    if (doc_offset == -1 || doc_size == -1)
-        return -1;
-
-       // acesso a memória e verificacao
-    FILE* doc;
-
-    doc = fopen (lib->docs[indice].name, "rb");
-
-    if(!doc) {
+    if(!biblioteca) {
 
         perror("Erro ao abrir arquivo para visualizar em view");
         return -1;
     }
 
+    // encontra o documento dentro da biblioteca
+    long doc_offset = -1;
+    long doc_size = -1;
+
+    for (int i = 0; i < lib->count; i++) {
+
+        if (strcmp(docname, lib->docs[i].name) == 0) {
+            
+            doc_offset = lib->docs[i].offset;
+            doc_size = lib->docs[i].size;
+        }
+    }
+
+    // se o documento não está na biblioteca
+    if (doc_offset == -1 || doc_size == -1) {
+        fclose(biblioteca);
+        return -1;
+    }
+
+    
     long inicio = doc_offset;
     long posicao_atual = doc_offset;
     long fim = doc_offset + doc_size;
@@ -294,38 +331,44 @@ int gbv_view(const Library *lib, const char *docname) {
     char opcao;
 
     // imprime a primeira vez
-    fseek(doc, doc_offset, SEEK_SET);
+    fseek(biblioteca, doc_offset, SEEK_SET);
 
     // caso em que o doc é maior do que buffer_size
     if (doc_size > BUFFER_SIZE) {
-        fread(buffer, 1, BUFFER_SIZE, doc);
+        fread(buffer, 1, BUFFER_SIZE, biblioteca);
         fwrite(buffer, 1, BUFFER_SIZE, stdout);
+        printf("\n");
         posicao_atual += BUFFER_SIZE;
     }
 
     // caso em que o doc é menor do que o buffer_size
     else {
-        fread(buffer, 1, doc_size, doc);
+        fread(buffer, 1, doc_size, biblioteca);
         fwrite(buffer, 1, doc_size, stdout);
+        printf("\n");
         posicao_atual = fim;    
     }
 
-   // loop de impressao 
-    while (posicao_atual < fim) {
 
-        scanf("%c", &opcao);
+   // loop de impressao 
+    while (1) {
+
+        scanf(" %c", &opcao);
 
         // usuario digitou 'n'
         if (opcao == 'n') {
 
             if(posicao_atual < fim && (posicao_atual + BUFFER_SIZE) < fim) {
-                fread(buffer, 1, BUFFER_SIZE, doc);
+                fseek(biblioteca, posicao_atual, SEEK_SET);
+                fread(buffer, 1, BUFFER_SIZE, biblioteca);
                 fwrite(buffer, 1, BUFFER_SIZE, stdout);
+                printf("\n");
                 posicao_atual += BUFFER_SIZE;
             }
             else if (posicao_atual < fim && (posicao_atual + BUFFER_SIZE) > fim) {
-                fread(buffer, 1, (fim - posicao_atual), doc);
+                fread(buffer, 1, (fim - posicao_atual), biblioteca);
                 fwrite(buffer, 1, (fim - posicao_atual), stdout);
+                printf("\n");
                 posicao_atual = fim;
             }
         }
@@ -335,22 +378,25 @@ int gbv_view(const Library *lib, const char *docname) {
 
             if ((posicao_atual - (BUFFER_SIZE * 2)) > inicio) {
                 posicao_atual -= BUFFER_SIZE * 2;
-                fseek(doc, posicao_atual, SEEK_SET);
-                fread(buffer, 1, BUFFER_SIZE, doc);
+                fseek(biblioteca, posicao_atual, SEEK_SET);
+                fread(buffer, 1, BUFFER_SIZE, biblioteca);
                 fwrite(buffer, 1, BUFFER_SIZE, stdout);
+                printf("\n");
             }
             else if ((posicao_atual - (BUFFER_SIZE * 2)) < inicio) {
 
                 if (posicao_atual - BUFFER_SIZE > inicio) {
                     posicao_atual -= BUFFER_SIZE;
-                    fseek(doc, posicao_atual, SEEK_SET);
-                    fread(buffer, 1, BUFFER_SIZE, doc);
+                    fseek(biblioteca, posicao_atual, SEEK_SET);
+                    fread(buffer, 1, BUFFER_SIZE, biblioteca);
                     fwrite(buffer, 1, BUFFER_SIZE, stdout);
+                    printf("\n");
                 }
                 else if ((posicao_atual - BUFFER_SIZE) < inicio) {
-                    fseek(doc, inicio, SEEK_SET);
-                    fread(buffer, 1, (posicao_atual - inicio), doc);
+                    fseek(biblioteca, inicio, SEEK_SET);
+                    fread(buffer, 1, (posicao_atual - inicio), biblioteca);
                     fwrite(buffer, 1, (posicao_atual - inicio), stdout);
+                    printf("\n");
                     posicao_atual = inicio;
                 }
             }
@@ -358,7 +404,7 @@ int gbv_view(const Library *lib, const char *docname) {
 
         // usuario digitou 'q'
         else if (opcao == 'q') {
-
+            fclose(biblioteca);
             return 0;
         }
     }
