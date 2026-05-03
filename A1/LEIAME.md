@@ -14,6 +14,8 @@ GRR: 20235088
 
     - Uso de malloc e realloc: como manipulação de arquivos é algo novo para mim, tive duvidas de como trabalhar corretamente com malloc e realloc.
 
+    - Foi necessário a alteração do cabeçalho de algumas funções para seu funcionamento, todas feitas de acordo com o professor. A função gbv_ordena não foi feita, com a permissão do professor
+
     - As funções gbv_add e gbv_view foram as mais difíceis na minha opinião, por trabalharem muito com acesso a arquivos.
 
 # Bugs conhecidos
