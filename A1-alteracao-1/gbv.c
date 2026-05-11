@@ -6,9 +6,6 @@
 #include "gbv.h"
 #include "util.h"
 
-// variável global de chave 
-char chave[4] = "pass";
-
 struct superbloco {
     int docs_num;
     long offset_dir;
@@ -25,10 +22,14 @@ int gbv_create(const char *filename) {
         return -1;
     }
 
+    // cria chave e insere na biblioteca
+    char chave[4] = "pass";
+
     int escrita_chave;
 
-    escrita_chave = fwrite(&chave, sizeof(chave), 1, arq);
+    escrita_chave = fwrite(&chave, 4, 1, arq);
     if (escrita_chave != 1) {
+        printf("Erro ao escrever chave\n");
         fclose(arq);
         return -1;
     }
@@ -36,11 +37,11 @@ int gbv_create(const char *filename) {
     // cria a biblioteca com um superbloco sem documentos
     struct superbloco sb;
     sb.docs_num = 0;
-    sb.offset_dir = sizeof(chave) + sizeof(struct superbloco);
+    sb.offset_dir = 4 + sizeof(struct superbloco);
 
     int escrita_superbloco;
 
-    fseek(arq, sizeof(chave), SEEK_SET);    // seta o ponteiro 4 bytes depois do inicio da biblioteca
+    fseek(arq, 4, SEEK_SET);    // seta o ponteiro 4 bytes depois do inicio da biblioteca
 
     escrita_superbloco = fwrite(&sb, sizeof(struct superbloco), 1, arq);
     if (escrita_superbloco != 1) {
@@ -52,7 +53,7 @@ int gbv_create(const char *filename) {
     return 0;
 }
 
-int gbv_open(Library *lib, const char *filename, const char *key) {
+int gbv_open(Library *lib, const char *filename) {
 
     FILE* arq;
 
@@ -71,7 +72,7 @@ int gbv_open(Library *lib, const char *filename, const char *key) {
     // le o superbloco
     struct superbloco sb;
     
-    fseek(arq, sizeof(chave), SEEK_SET);
+    fseek(arq, 4, SEEK_SET);
     if (fread(&sb, sizeof(struct superbloco), 1, arq) != 1) {
         fclose(arq);
         return -1;
@@ -114,7 +115,7 @@ int gbv_open(Library *lib, const char *filename, const char *key) {
 
 
 /* Função Auxiliar de GBV_ADD */
-Document novo_documento (Library *lib, int indice, const char *name, long size, time_t date, long offset) {
+ Document novo_documento (Library *lib, int indice, const char *name, long size, time_t date, long offset) {
 
     strcpy(lib->docs[indice].name, name);
     lib->docs[indice].size = size;
@@ -125,18 +126,6 @@ Document novo_documento (Library *lib, int indice, const char *name, long size, 
 }
 
 int gbv_add(Library *lib, const char *archive, const char *docname, const char *key) {
-
-    // verificação de chave 
-    if (strcmp(key, chave) != 0) {
-        printf("Acesso Negado\n");
-        exit(0);
-    }
-
-    // verificação de chave 
-    if (strcmp(key, chave) != 0) {
-        printf("Acesso Negado\n");
-        exit(0);
-    }
 
     // verificacao
     if (!lib || !archive || !docname)
@@ -163,9 +152,24 @@ int gbv_add(Library *lib, const char *archive, const char *docname, const char *
         return -1;
     }
 
+    // verificação de chave 
+    fseek(biblioteca, 0, SEEK_SET);
+
+    char chave[4];
+    if (fread(&chave, 4, 1, biblioteca) != 1) {
+        printf("erro ao ler chave em add\n");
+        fclose(biblioteca);
+        return -1;
+    }
+
+    if (strcmp(key, chave) != 0) {
+        printf("Acesso Negado\n");
+        exit(0);
+    }
+
     // acessa o offset da area de diretorio
     struct superbloco sb;
-    fseek(biblioteca, 0, SEEK_SET);
+    fseek(biblioteca, 4, SEEK_SET);
     fread(&sb, sizeof(struct superbloco), 1, biblioteca);
     long offset_dir = sb.offset_dir;
 
@@ -212,7 +216,7 @@ int gbv_add(Library *lib, const char *archive, const char *docname, const char *
     sb.docs_num = lib->count;
     sb.offset_dir = novo_offset_dir;
 
-    fseek(biblioteca, 0, SEEK_SET);
+    fseek(biblioteca, 4, SEEK_SET);
     fwrite(&sb, sizeof(struct superbloco), 1, biblioteca);
 
     // finaliza 
@@ -221,16 +225,10 @@ int gbv_add(Library *lib, const char *archive, const char *docname, const char *
     rewind(biblioteca);
     fclose(biblioteca);
     return 0;
-}
+} 
 
 
 int gbv_remove(Library *lib, const char *docname, const char* archive, const char *key) {
-
-    // verificação de chave 
-    if (strcmp(key, chave) != 0) {
-        printf("Acesso Negado\n");
-        exit(0);
-    }
 
     // verificacao
     if (!lib || lib->count == 0 || !docname)
@@ -245,10 +243,25 @@ int gbv_remove(Library *lib, const char *docname, const char* archive, const cha
         return -1;
     }
 
+    // verificação de chave 
+    char chave[4];
+    if (fread(&chave, sizeof(chave), 1, biblioteca) != 1) {
+        printf("erro ao ler chave em remove\n");
+        fclose(biblioteca);
+        return -1;
+    }
+
+    printf("chave em -r: %s\n", chave);
+    if (strcmp(key, chave) != 0) {
+        printf("key: %s\n", key);
+        printf("Acesso Negado\n");
+        exit(0);
+    }
+
     // le o superbloco
     struct superbloco sb;
 
-    fseek(biblioteca, 0, SEEK_SET);
+    fseek(biblioteca, 4, SEEK_SET);
     fwrite(&sb, sizeof(struct superbloco), 1, biblioteca);
 
     // percorre o vetor de documentos procurando o arquivo a ser removido, se achar, remove, senão, retorna
@@ -271,7 +284,7 @@ int gbv_remove(Library *lib, const char *docname, const char* archive, const cha
     // altera o superbloco
     sb.docs_num = lib->count;
 
-    fseek(biblioteca, 0, SEEK_SET);
+    fseek(biblioteca, 4, SEEK_SET);
     fwrite(&sb, sizeof(struct superbloco), 1, biblioteca);
 
     // ajusta a memória caso ela tenha ficado vazia
@@ -282,11 +295,27 @@ int gbv_remove(Library *lib, const char *docname, const char* archive, const cha
 
     fclose(biblioteca);
     return 0;
-}
+} 
 
-int gbv_list(const Library *lib, const char *key) {
+int gbv_list(const Library *lib, const char* archive, const char *key) {
+
+     // le a biblioteca
+    FILE* biblioteca;
+
+    biblioteca =  fopen(archive, "rb+");
+
+    if(!biblioteca) {
+        return -1;
+    }
 
     // verificação de chave 
+    char chave[4];
+    if (fread(&chave, sizeof(chave), 1, biblioteca) != 1) {
+        printf("erro ao ler chave em remove\n");
+        fclose(biblioteca);
+        return -1;
+    }
+
     if (strcmp(key, chave) != 0) {
         printf("Acesso Negado\n");
         exit(0);
@@ -313,12 +342,6 @@ int gbv_list(const Library *lib, const char *key) {
 
 int gbv_view(const Library *lib, const char *docname, const char* archive, const char *key) {
 
-    // verificação de chave 
-    if (strcmp(key, chave) != 0) {
-        printf("Acesso Negado\n");
-        exit(0);
-    }
-
     // acesso a memória e verificacao
     FILE* biblioteca;
 
@@ -326,6 +349,19 @@ int gbv_view(const Library *lib, const char *docname, const char* archive, const
 
     if(!biblioteca) {
         return -1;
+    }
+
+    // verificação de chave 
+    char chave[4];
+    if (fread(&chave, sizeof(chave), 1, biblioteca) != 1) {
+        printf("erro ao ler chave em remove\n");
+        fclose(biblioteca);
+        return -1;
+    }
+
+    if (strcmp(key, chave) != 0) {
+        printf("Acesso Negado\n");
+        exit(0);
     }
 
     // encontra o documento dentro da biblioteca
@@ -434,4 +470,4 @@ int gbv_view(const Library *lib, const char *docname, const char* archive, const
     }
         
     return -1;
-}
+} 
