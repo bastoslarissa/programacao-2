@@ -1,0 +1,27 @@
+Autora: Larissa de Souza Bastos
+
+# Alteração - A2: Chave de Acesso (Shift 4B)
+O objetivo dessa alteração é implementar uma trava de segurança que altera o alinhamento físico do arquivo.gbv.
+
+### NOVA ASSINATURA DO COMANDO
+O executável deve agora aceitar uma chave de 4 caracteres como primeiro argumento obrigatório: 
+<chave> <opção> <biblioteca> [documentos...]
+
+Regra da Chave (4 bytes)
+Definição: A chave é definida no momento da criação da biblioteca. Ela deve ser gravada nos primeiros 4 bytes 
+do arquivo (offset 0).
+
+Validação Obrigatória: Em todas as operações (-a, -r, -l, -v, -o), o programa deve ler primeiro os 4 bytes iniciais 
+do arquivo. Se a chave informada pelo usuário for diferente da gravada no arquivo , exiba Acesso Negado e encerre a 
+execução imediamente.
+
+Mudança na estrutura binária 
+A presença da chave de 4 bytes desloca toda estrutura anterior do container:
+    - Superbloco: O número de documentos e o offset do diretório agora começam no byte 4
+    - Offsets: Toda lógica de leitura e escrita da Área de Dados e da Área de Diretório deve ser ajustada  para compensar
+               esse deslocamento inicial de +4 bytes
+
+
+TODO:
+- criar e adicionar chave em gbv_create
+- adicionar a verificação de chaves nas outras funções  
